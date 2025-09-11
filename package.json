@@ -2,7 +2,7 @@
     "name": "bluebazel",
     "displayName": "Blue Bazel",
     "description": "Bazel vscode UI integration to build, debug, and test targets",
-    "version": "1.0.6",
+    "version": "1.0.0",
     "engines": {
         "vscode": "^1.85.2"
     },
@@ -451,6 +451,32 @@
                             "command"
                         ]
                     }
+                },
+                "bluebazel.extraLanguageMappings": {
+                    "type": "array",
+                    "description": "Custom defined language mappings for BlueBazel.",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "prefix": {
+                                "type": "string",
+                                "description": "The prefix of the bazel target to map."
+                            },
+                            "language": {
+                                "type": "string",
+                                "description": "The language that the bazel target maps to."
+                            }
+                        }
+                    }
+                },
+                "bluebazel.debug.bazelArgs": {
+                    "type": "array",
+                    "default": [],
+                    "description": "Additional Bazel arguments that will be added to all debug commands.",
+                    "items": {
+                        "type": "string",
+                        "description": "An additional Bazel argument."
+                    }
                 }
             }
         }
@@ -500,8 +526,8 @@
         "tmp": "^0.2.1",
         "uuid": "^10.0.0"
     },
-    "publisher": "NVIDIA",
+    "publisher": "snowflake",
     "repository": {
-        "url": "https://github.com/NVIDIA/bluebazel"
+        "url": "https://github.com/Snowflake-Labs/bluebazel"
     }
 }

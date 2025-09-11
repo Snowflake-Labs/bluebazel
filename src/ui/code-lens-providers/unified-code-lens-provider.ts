@@ -113,8 +113,10 @@ export class UnifiedCodeLensProvider implements vscode.CodeLensProvider {
             let functionName = '';
             if (language === 'cpp' || language === 'c') {
                 // Combine FixtureName and TestName for C++/C tests
-                const fixtureName = match[2];
-                const testName = match[3];
+                // Regex decoder ring (from getCodeLensTestRegex())
+                // Contains: [0: whole matched string, 1: test fixture, 2: test name]
+                const fixtureName = match[1];
+                const testName = match[2];
                 functionName = `${fixtureName}.${testName}`;
             } else {
                 // Use captured test function name for other languages

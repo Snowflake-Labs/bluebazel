@@ -67,7 +67,7 @@ export class BazelTarget {
         } else {
             this.id = id;
         }
-        this.language = BazelService.inferLanguageFromRuleType(this.ruleType);
+        this.language = this.bazelService.inferLanguageFromRuleType(this.ruleType);
 
         this.envVars = new BazelTargetMultiProperty(context, 'Environment', 'EnvVars',
             this,

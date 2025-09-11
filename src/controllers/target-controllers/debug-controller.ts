@@ -100,11 +100,17 @@ export class DebugController implements BazelTargetController {
         const extraDebugEnvVars = DebugController.getDebugEnvVars(target);
         envVarsList.push(...extraDebugEnvVars);
 
+        const configBazelArgs = this.configurationManager.getDebugBazelArgs().map(arg => arg.toString()).join(' ');
+        let bazelArgsString = bazelArgs.toString();
+        if (configBazelArgs.length > 0) {
+            bazelArgsString = bazelArgsString + ' ' + configBazelArgs;
+        }
+
         // Remove extra whitespaces
         const command = cleanAndFormat(
             executable,
             target.action,
-            bazelArgs.toString(),
+            bazelArgsString,
             DebugController.getRunUnderArg(target, port),
             configArgs.toString(),
             target.action === 'test' ? EnvVarsUtils.toTestEnvVars(envVarsList) : '',
@@ -178,7 +184,7 @@ export class DebugController implements BazelTargetController {
                 }
             });
 
-            Console.info('Waiting for port to open...');
+            Console.info(`Waiting for port ${port} to open...`);
             // Wait for the port to open up by polling (the loop cancels when the server does)
             await waitForPort(port, waitForPortCancellation.token);
 
@@ -196,6 +202,8 @@ export class DebugController implements BazelTargetController {
                 if (session && session.name === config.name) {
                     debugSessionId = session.id;
                 }
+            } else {
+                Console.info('VSCode failed to start debugging...');
             }
 
             // Kill the server when the debugging is disconnected
