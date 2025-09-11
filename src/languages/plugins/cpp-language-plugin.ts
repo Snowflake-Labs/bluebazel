@@ -152,7 +152,7 @@ export class CppLanguagePlugin implements LanguagePlugin {
             request: 'launch',
             program: programPath,
             miDebuggerServerAddress: `127.0.0.1:${port}`,
-            miDebuggerPath: '/usr/bin/gdb',
+            miDebuggerPath: '/usr/local/bin/gdb',
             MIMode: 'gdb',
             stopAtEntry: false,
             cwd: workingDirectory,
