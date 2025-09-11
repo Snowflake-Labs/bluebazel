@@ -342,7 +342,7 @@ export class BazelService {
         return this.fetchAutocompleteForAction(action, 'configs', cancellationToken);
     }
 
-    public static inferLanguageFromRuleType(ruleType: string): string | undefined {
+    public inferLanguageFromRuleType(ruleType: string): string | undefined {
         if (!ruleType || typeof ruleType !== 'string') {
             Console.warn(`Invalid ruleType: ${ruleType}`);
             return undefined;
@@ -356,8 +356,16 @@ export class BazelService {
             if (normalizedRuleType.includes(prefix)) {
                 return bazelRuleTypeLanguageMapping.get(prefix);
             }
+            Console.info(`No matching prefix found for ${normalizedRuleType}`);
         }
 
+        // Iterate over user defined mappings in settings.json
+        const userDefinedLanguageMappings = this.configurationManager.getUserDefinedLanguageMappings();
+        const foundMapping = userDefinedLanguageMappings[normalizedRuleType];
+        if (foundMapping) {
+            Console.info(`Found mapping for ${normalizedRuleType}: ${foundMapping}`);
+            return foundMapping;
+        }
         // Special cases or rules that don't map directly to a language
         if (normalizedRuleType.includes('package')) {
             return 'starlark';

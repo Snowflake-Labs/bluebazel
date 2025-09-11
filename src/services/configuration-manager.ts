@@ -60,6 +60,23 @@ export class UserCustomButton {
     }
 }
 
+export class UserExtraLanguageMapping {
+    prefix: string;
+    language: string;
+
+    constructor(data: { prefix: string, language: string }) {
+        this.prefix = data.prefix;
+        this.language = data.language;
+    }
+
+    toJSON(): { prefix: string, language: string } {
+        return {
+            prefix: this.prefix,
+            language: this.language
+        };
+    }
+}
+
 export class UserCustomCategory {
     title: string;
     icon: string;
@@ -244,6 +261,27 @@ export class ConfigurationManager {
             return false;
         else
             return res;
+    }
+
+    public getUserDefinedLanguageMappings(): { [key: string]: string } {
+        const config = this.getConfig();
+        const res = config.get<Array<UserExtraLanguageMapping>>('extraLanguageMappings');
+        if (res === undefined) {
+            return {};
+        }
+        return res.reduce((acc: { [key: string]: string }, mapping: UserExtraLanguageMapping) => {
+            acc[mapping.prefix] = mapping.language;
+            return acc;
+        }, {});
+    }
+
+    public getDebugBazelArgs(): Array<string> {
+        const config = this.getConfig();
+        const res = config.get<Array<string>>('debug.bazelArgs');
+        if (res === undefined) {
+            return [];
+        }
+        return res;
     }
 
 }
