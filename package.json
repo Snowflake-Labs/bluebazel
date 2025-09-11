@@ -2,7 +2,7 @@
     "name": "bluebazel",
     "displayName": "Blue Bazel",
     "description": "Bazel vscode UI integration to build, debug, and test targets",
-    "version": "1.0.6",
+    "version": "1.0.0",
     "engines": {
         "vscode": "^1.85.2"
     },
@@ -526,8 +526,8 @@
         "tmp": "^0.2.1",
         "uuid": "^10.0.0"
     },
-    "publisher": "NVIDIA",
+    "publisher": "snowflake",
     "repository": {
-        "url": "https://github.com/NVIDIA/bluebazel"
+        "url": "https://github.com/Snowflake-Labs/bluebazel"
     }
 }
