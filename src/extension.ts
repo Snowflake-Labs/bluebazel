@@ -164,7 +164,7 @@ async function initExtension(context: vscode.ExtensionContext) {
     /******
      * LANGUAGES
      ******/
-    registerLanguages(context, bazelService, bazelEnvironment);
+    registerLanguages(context, bazelService, bazelEnvironment, configurationManager);
 
     /******
      * MODELS

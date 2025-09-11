@@ -23,6 +23,7 @@
 ////////////////////////////////////////////////////////////////////////////////////
 import { BazelTarget } from '../../models/bazel-target';
 import { BazelService } from '../../services/bazel-service';
+import { ConfigurationManager } from '../../services/configuration-manager';
 import { EnvVarsUtils } from '../../services/env-vars-utils';
 import { LanguagePlugin } from '../language-plugin';
 import * as path from 'path';
@@ -34,7 +35,8 @@ export class CppLanguagePlugin implements LanguagePlugin {
 
     constructor(private readonly context: vscode.ExtensionContext,
         private readonly bazelService: BazelService,
-        private readonly setupEnvVars: string[]
+        private readonly setupEnvVars: string[],
+        private readonly configurationManager: ConfigurationManager
     ) {
         this.supportedLanguages = ['cpp', 'c'];
     }
@@ -152,7 +154,7 @@ export class CppLanguagePlugin implements LanguagePlugin {
             request: 'launch',
             program: programPath,
             miDebuggerServerAddress: `127.0.0.1:${port}`,
-            miDebuggerPath: '/usr/local/bin/gdb',
+            miDebuggerPath: this.configurationManager.getDebugGdbPath(),
             MIMode: 'gdb',
             stopAtEntry: false,
             cwd: workingDirectory,
