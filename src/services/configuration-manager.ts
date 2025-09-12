@@ -284,4 +284,13 @@ export class ConfigurationManager {
         return res;
     }
 
+    public getDebugGdbPath(): string {
+        const config = this.getConfig();
+        const res = config.get<string>('debug.gdbPath');
+        if (res === undefined || res === '') {
+            return '/usr/bin/gdb';
+        }
+        return res;
+    }
+
 }

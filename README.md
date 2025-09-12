@@ -228,6 +228,106 @@ modifies it to return something in the form of `//path/...`.
 Finally, the button `Test` uses the output of `testTarget` to display the user the list of tests to choose from,
 and executes the test using the current configs and run arguments.
 
+## Configuration
+
+### Debug Configuration
+
+The extension provides several configuration options to customize debugging behavior:
+
+#### bluebazel.debug.gdbPath
+
+Specifies the path to the GDB debugger executable used for C/C++ debugging.
+
+**Default:** `/usr/bin/gdb`
+
+**Usage:**
+```json
+{
+  "bluebazel.debug.gdbPath": "/usr/local/bin/gdb"
+}
+```
+
+This setting is particularly useful when:
+- GDB is installed in a non-standard location
+- Using a specific version of GDB
+- Working in containerized or custom environments
+
+#### bluebazel.debug.bazelArgs
+
+Additional Bazel arguments that will be automatically added to all debug commands.
+
+**Default:** `[]` (empty array)
+
+**Usage:**
+```json
+{
+  "bluebazel.debug.bazelArgs": [
+    "--compilation_mode=dbg", 
+    "--strip=never",
+    "--config=debug"
+  ]
+}
+```
+
+Common use cases:
+- Adding debug-specific compilation flags
+- Including custom configuration profiles
+- Setting environment-specific parameters for debugging
+
+### Language Support Configuration
+
+#### bluebazel.extraLanguageMappings
+
+Defines custom mappings from Bazel rule types to programming languages for **non-native Bazel rules**. This is used when you have custom Bazel rules (defined in your own `.bzl` files or third-party rule sets) that the extension doesn't automatically recognize.
+
+The extension automatically detects standard Bazel rules like `cc_binary`, `go_binary`, etc. This setting is only needed for custom rule types.
+
+**Default:** `[]` (empty array)
+
+**Usage:**
+```json
+{
+  "bluebazel.extraLanguageMappings": [
+    {
+      "prefix": "my_custom_cc",
+      "language": "cpp"
+    },
+    {
+      "prefix": "company_go_binary", 
+      "language": "go"
+    }
+  ]
+}
+```
+
+**Configuration Structure:**
+- `prefix`: The prefix or pattern in your custom Bazel rule type to match against
+- `language`: The programming language to associate with targets using that rule type
+
+**Supported Languages:**
+- `cpp`: C/C++ targets (enables GDB debugging and C++ code lens features)
+- `go`: Go targets (enables Delve debugging and Go code lens features)
+
+**Example:**
+If your workspace uses custom rules like `my_company_cc_binary` or `special_go_test`, you can map them to the appropriate language support:
+
+```json
+{
+  "bluebazel.extraLanguageMappings": [
+    {
+      "prefix": "my_company_cc",
+      "language": "cpp"
+    },
+    {
+      "prefix": "special_go",
+      "language": "go"
+    }
+  ]
+}
+```
+
+This ensures that debugging, code lens features, and other language-specific functionality work correctly with your custom rule types.
+
 ## Releases
 
 See [Release Notes](ReleaseNotes.md)

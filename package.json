@@ -477,6 +477,11 @@
                         "type": "string",
                         "description": "An additional Bazel argument."
                     }
+                },
+                "bluebazel.debug.gdbPath": {
+                    "type": "string",
+                    "default": "/usr/bin/gdb",
+                    "description": "Path to the GDB debugger executable."
                 }
             }
         }
