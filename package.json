@@ -482,6 +482,12 @@
                     "type": "string",
                     "default": "/usr/bin/gdb",
                     "description": "Path to the GDB debugger executable."
+                },
+                "bluebazel.debug.debuggerType": {
+                    "type": "string",
+                    "enum": ["cppdbg", "lldb"],
+                    "default": "cppdbg",
+                    "description": "Choose which debugger to use for C++ debugging. 'cppdbg' uses Microsoft C++ extension, 'lldb' uses CodeLLDB extension."
                 }
             }
         }

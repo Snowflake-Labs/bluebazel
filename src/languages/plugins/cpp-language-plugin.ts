@@ -42,7 +42,13 @@ export class CppLanguagePlugin implements LanguagePlugin {
     }
 
     public getDebugRunUnderCommand(port: number): string {
-        return `gdbserver :${port}`;
+        const debuggerType = this.configurationManager.getDebuggerType();
+
+        if (debuggerType === 'lldb') {
+            return `lldb-server gdbserver :${port}`;
+        } else {
+            return `gdbserver :${port}`;
+        }
     }
 
     public getDebugEnvVars(_target: BazelTarget): string[] {
@@ -98,6 +104,16 @@ export class CppLanguagePlugin implements LanguagePlugin {
     }
 
     public async createDebugDirectLaunchConfig(target: BazelTarget, _cancellationToken?: vscode.CancellationToken): Promise<vscode.DebugConfiguration> {
+        const debuggerType = this.configurationManager.getDebuggerType();
+
+        if (debuggerType === 'lldb') {
+            return this.createLldbDirectLaunchConfig(target);
+        } else {
+            return this.createCppdbgDirectLaunchConfig(target);
+        }
+    }
+
+    private async createCppdbgDirectLaunchConfig(target: BazelTarget): Promise<vscode.DebugConfiguration> {
         const workingDirectory = '${workspaceFolder}';
         const targetPath = target.buildPath;//await this.bazelService.getBazelTargetBuildPath(target, cancellationToken);
         const programPath = path.join(workingDirectory, targetPath);
@@ -137,6 +153,16 @@ export class CppLanguagePlugin implements LanguagePlugin {
     public async createDebugAttachConfig(target: BazelTarget,
         port: number,
         _cancellationToken?: vscode.CancellationToken): Promise<vscode.DebugConfiguration> {
+        const debuggerType = this.configurationManager.getDebuggerType();
+
+        if (debuggerType === 'lldb') {
+            return this.createLldbAttachConfig(target, port);
+        } else {
+            return this.createCppdbgAttachConfig(target, port);
+        }
+    }
+
+    private async createCppdbgAttachConfig(target: BazelTarget, port: number): Promise<vscode.DebugConfiguration> {
         const bazelTarget = BazelService.formatBazelTargetFromPath(target.buildPath);
         const workingDirectory = '${workspaceFolder}';
         const targetPath = target.buildPath;
@@ -216,6 +242,50 @@ export class CppLanguagePlugin implements LanguagePlugin {
             useExtendedRemote: true,
         };
         return config;
+    }
+
+    private async createLldbAttachConfig(target: BazelTarget, port: number): Promise<vscode.DebugConfiguration> {
+        const bazelTarget = BazelService.formatBazelTargetFromPath(target.buildPath);
+        const workingDirectory = '${workspaceFolder}';
+        const targetPath = target.buildPath;
+        const programPath = path.join(workingDirectory, targetPath);
+        const runArgs = target.getRunArgs().toString();
+
+        return {
+            name: `${bazelTarget} (LLDB Attach)`,
+            type: 'lldb',
+            request: 'launch',
+            program: programPath,
+            args: runArgs.length > 0 ? runArgs.split(' ') : [],
+            cwd: workingDirectory,
+            sourceMap: {
+                '.': workingDirectory
+            },
+            env: EnvVarsUtils.listToObject([...this.setupEnvVars, ...target.getEnvVars().toStringArray()]),
+            initCommands: [
+                `gdb-remote 127.0.0.1:${port}`
+            ]
+        };
+    }
+
+    private async createLldbDirectLaunchConfig(target: BazelTarget): Promise<vscode.DebugConfiguration> {
+        const workingDirectory = '${workspaceFolder}';
+        const targetPath = target.buildPath;
+        const programPath = path.join(workingDirectory, targetPath);
+        const runArgs = target.getRunArgs().toString();
+
+        return {
+            name: `debug ${path.basename(targetPath)}`,
+            type: 'lldb',
+            request: 'launch',
+            program: programPath,
+            args: runArgs.length > 0 ? runArgs.split(' ') : [],
+            cwd: `${workingDirectory}/${path.dirname(targetPath)}.runfiles/__main__`,
+            sourceMap: {
+                '.': workingDirectory
+            },
+            env: EnvVarsUtils.listToObject([...this.setupEnvVars, ...target.getEnvVars().toStringArray()])
+        };
     }
 
     /**
