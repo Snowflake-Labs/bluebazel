@@ -57,6 +57,16 @@ export class CppLanguagePlugin implements LanguagePlugin {
 
     public async createDebugRunUnderLaunchConfig(target: BazelTarget,
         _cancellationToken?: vscode.CancellationToken): Promise<vscode.DebugConfiguration> {
+        const debuggerType = this.configurationManager.getDebuggerType();
+
+        if (debuggerType === 'lldb') {
+            return this.createLldbRunUnderLaunchConfig(target);
+        } else {
+            return this.createCppdbgRunUnderLaunchConfig(target);
+        }
+    }
+
+    private async createCppdbgRunUnderLaunchConfig(target: BazelTarget): Promise<vscode.DebugConfiguration> {
         const bazelTarget = BazelService.formatBazelTargetFromPath(target.buildPath);
         const bazelArgs = target.getBazelArgs().toString();
         const configArgs = target.getConfigArgs().toString();
@@ -101,6 +111,29 @@ export class CppLanguagePlugin implements LanguagePlugin {
             internalConsoleOptions: 'openOnSessionStart'
         } as vscode.DebugConfiguration;
         return config;
+    }
+
+    private async createLldbRunUnderLaunchConfig(target: BazelTarget): Promise<vscode.DebugConfiguration> {
+        const bazelTarget = BazelService.formatBazelTargetFromPath(target.buildPath);
+        const bazelArgs = target.getBazelArgs().toString();
+        const configArgs = target.getConfigArgs().toString();
+        const workingDirectory = '${workspaceFolder}';
+        const runArgs = target.getRunArgs().toString();
+
+        return {
+            name: `${bazelTarget} (LLDB Run Under)`,
+            type: 'lldb',
+            request: 'launch',
+            program: '/bin/bash',
+            args: ['-c', `./.vscode/bazel_debug.sh ${target.action} --run_under="${this.getDebugRunUnderCommand(0).replace(':0', '')}" ${bazelArgs} ${configArgs} ${bazelTarget} ${runArgs}`],
+            cwd: workingDirectory,
+            sourceMap: {
+                '/proc/self/cwd': workingDirectory,
+                '.': workingDirectory
+            },
+            env: EnvVarsUtils.listToObject([...this.setupEnvVars, ...target.getEnvVars().toStringArray()]),
+            console: 'integratedTerminal'
+        };
     }
 
     public async createDebugDirectLaunchConfig(target: BazelTarget, _cancellationToken?: vscode.CancellationToken): Promise<vscode.DebugConfiguration> {
@@ -261,10 +294,6 @@ export class CppLanguagePlugin implements LanguagePlugin {
             sourceMap: {
                 '.': workingDirectory
             },
-            env: EnvVarsUtils.listToObject([...this.setupEnvVars, ...target.getEnvVars().toStringArray()]),
-            initCommands: [
-                `gdb-remote 127.0.0.1:${port}`
-            ]
         };
     }
 
