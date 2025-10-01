@@ -99,11 +99,7 @@ private async createLldbAttachConfig(target: BazelTarget, port: number): Promise
         cwd: workingDirectory,
         sourceMap: {
             '.': workingDirectory
-        },
-        env: EnvVarsUtils.listToObject([...this.setupEnvVars, ...target.getEnvVars().toStringArray()]),
-        initCommands: [
-            `gdb-remote 127.0.0.1:${port}`
-        ]
+        }
     };
 }
 
@@ -144,6 +140,8 @@ public getDebugRunUnderCommand(port: number): string {
     }
 }
 ```
+
+**Note:** The run-under debugging scenario with `lldb-server gdbserver` requires further investigation to ensure proper integration with CodeLLDB's remote debugging capabilities. The simple direct launch configurations (attach/direct launch) work without remote server connectivity.
 
 ### 5. Add Pre-launch Task Support (Optional Enhancement)
 Based on plan.md example, we could add pre-launch task support by modifying the LLDB direct launch config:

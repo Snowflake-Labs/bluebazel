@@ -294,6 +294,9 @@ export class CppLanguagePlugin implements LanguagePlugin {
             sourceMap: {
                 '.': workingDirectory
             },
+            initCommands: [
+                `gdb-remote 127.0.0.1:${port}`
+            ]
         };
     }
 
