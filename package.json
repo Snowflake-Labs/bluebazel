@@ -17,7 +17,8 @@
         "workspaceContains:WORKSPACE",
         "workspaceContains:WORKSPACE.bazel",
         "workspaceContains:MODULE",
-        "workspaceContains:MODULE.bazel"
+        "workspaceContains:MODULE.bazel",
+        "onStartupFinished"
     ],
     "main": "./out/main.js",
     "contributes": {
@@ -471,7 +472,7 @@
                 },
                 "bluebazel.debug.bazelArgs": {
                     "type": "array",
-                    "default": [],
+                    "default": ["--compilation_mode=dbg", "--spawn_strategy=local"],
                     "description": "Additional Bazel arguments that will be added to all debug commands.",
                     "items": {
                         "type": "string",

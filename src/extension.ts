@@ -109,11 +109,48 @@ function attachTreeDataProviderToView(context: vscode.ExtensionContext,
     context.subscriptions.push(treeView);
 }
 
+async function findBazelWorkspace(): Promise<string | null> {
+    const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
+    if (!workspaceFolder) {
+        return null;
+    }
+
+    const fs = require('fs');
+    const path = require('path');
+
+    const bazelFiles = ['WORKSPACE', 'WORKSPACE.bazel', 'MODULE', 'MODULE.bazel'];
+    let currentDir = workspaceFolder.uri.fsPath;
+
+    // Walk up the directory tree looking for Bazel workspace files
+    while (currentDir !== path.dirname(currentDir)) { // Stop at filesystem root
+        for (const bazelFile of bazelFiles) {
+            const filePath = path.join(currentDir, bazelFile);
+            if (fs.existsSync(filePath)) {
+                Console.info(`Found Bazel workspace file: ${filePath}`);
+                return currentDir; // Return the directory containing the Bazel workspace file
+            }
+        }
+        currentDir = path.dirname(currentDir);
+    }
+
+    return null;
+}
+
 async function initExtension(context: vscode.ExtensionContext) {
     // Initialize custom console for prefixing logging.
     Console.initialize(context);
 
-    Console.info('Initializing extension...');
+    // Check if we're in a Bazel workspace (walk up directory tree if needed)
+    const bazelWorkspaceRoot = await findBazelWorkspace();
+    if (!bazelWorkspaceRoot) {
+        Console.info('Not in a Bazel workspace, extension will remain inactive.');
+        return;
+    }
+
+    Console.info(`Initializing extension with Bazel workspace root: ${bazelWorkspaceRoot}...`);
+
+    // Override workspace service to use the detected Bazel workspace root
+    WorkspaceService.getInstance().setBazelWorkspaceRoot(bazelWorkspaceRoot);
 
     // Clean the workspace state if necessary
     workspaceStateManager = new WorkspaceStateManager(context);
@@ -135,14 +172,16 @@ async function initExtension(context: vscode.ExtensionContext) {
     Console.info('Initializing services...');
     // The shell service runs any shell commands that are needed by the extension and
     // can run said commands with the appropriate environment variables.
-    shellService = new ShellService(WorkspaceService.getInstance().getWorkspaceFolder(),
+    // Use Bazel workspace root for running Bazel commands
+    shellService = new ShellService(WorkspaceService.getInstance().getBazelWorkspaceFolder(),
         outputChannel,
         EnvVarsUtils.listToObject(bazelEnvironment.getEnvVars()));
 
     // The task service runs any tasks that are needed by the extension and
     // can run said tasks with the appropriate environment vairables.
+    // Use Bazel workspace root for running Bazel tasks
     taskService = new TaskService(context,
-        WorkspaceService.getInstance().getWorkspaceFolder(),
+        WorkspaceService.getInstance().getBazelWorkspaceFolder(),
         bazelEnvironment.getEnvVars()
     );
 

@@ -25,6 +25,7 @@ import { BazelTarget } from '../../models/bazel-target';
 import { BazelService } from '../../services/bazel-service';
 import { ConfigurationManager } from '../../services/configuration-manager';
 import { EnvVarsUtils } from '../../services/env-vars-utils';
+import { WorkspaceService } from '../../services/workspace-service';
 import { LanguagePlugin } from '../language-plugin';
 import * as path from 'path';
 import * as vscode from 'vscode';
@@ -41,13 +42,57 @@ export class CppLanguagePlugin implements LanguagePlugin {
         this.supportedLanguages = ['cpp', 'c'];
     }
 
+    private getBinaryPath(target: BazelTarget): string {
+        // Use Bazel workspace root for binary path, since that's where bazel-bin is located
+        const bazelWorkspaceFolder = WorkspaceService.getInstance().getBazelWorkspaceFolder();
+        return path.join(bazelWorkspaceFolder.uri.fsPath, target.buildPath);
+    }
+
     public getDebugRunUnderCommand(port: number): string {
         const debuggerType = this.configurationManager.getDebuggerType();
 
         if (debuggerType === 'lldb') {
-            return `lldb-server gdbserver :${port}`;
+            // Find CodeLLDB extension directory dynamically
+            const codelldbPath = this.getCodeLLDBPath();
+            if (codelldbPath) {
+                return `${codelldbPath}/lldb/bin/lldb-server gdbserver :${port}`;
+            } else {
+                // Fallback to system lldb-server if CodeLLDB not found
+                return `lldb-server gdbserver :${port}`;
+            }
         } else {
             return `gdbserver :${port}`;
+        }
+    }
+
+    private getCodeLLDBPath(): string | null {
+        try {
+            const fs = require('fs');
+            const path = require('path');
+            const os = require('os');
+
+            const extensionsDir = path.join(os.homedir(), '.vscode-server', 'extensions');
+
+            if (!fs.existsSync(extensionsDir)) {
+                return null;
+            }
+
+            const extensions = fs.readdirSync(extensionsDir);
+            const codelldbDir = extensions.find((dir: string) => dir.startsWith('vadimcn.vscode-lldb-'));
+
+            if (codelldbDir) {
+                const fullPath = path.join(extensionsDir, codelldbDir);
+                const lldbServerPath = path.join(fullPath, 'lldb', 'bin', 'lldb-server');
+
+                // Verify the lldb-server binary exists
+                if (fs.existsSync(lldbServerPath)) {
+                    return fullPath;
+                }
+            }
+
+            return null;
+        } catch (error) {
+            return null;
         }
     }
 
@@ -148,8 +193,7 @@ export class CppLanguagePlugin implements LanguagePlugin {
 
     private async createCppdbgDirectLaunchConfig(target: BazelTarget): Promise<vscode.DebugConfiguration> {
         const workingDirectory = '${workspaceFolder}';
-        const targetPath = target.buildPath;//await this.bazelService.getBazelTargetBuildPath(target, cancellationToken);
-        const programPath = path.join(workingDirectory, targetPath);
+        const programPath = this.getBinaryPath(target);
 
         /* The environment key for type 'cppdbg' is different than
          * other launch configs because it expects an array of
@@ -198,8 +242,7 @@ export class CppLanguagePlugin implements LanguagePlugin {
     private async createCppdbgAttachConfig(target: BazelTarget, port: number): Promise<vscode.DebugConfiguration> {
         const bazelTarget = BazelService.formatBazelTargetFromPath(target.buildPath);
         const workingDirectory = '${workspaceFolder}';
-        const targetPath = target.buildPath;
-        const programPath = path.join(workingDirectory, targetPath);
+        const programPath = this.getBinaryPath(target);
 
         const envVars = EnvVarsUtils.listToArrayOfObjects(target.getEnvVars().toStringArray());
 
@@ -280,8 +323,7 @@ export class CppLanguagePlugin implements LanguagePlugin {
     private async createLldbAttachConfig(target: BazelTarget, port: number): Promise<vscode.DebugConfiguration> {
         const bazelTarget = BazelService.formatBazelTargetFromPath(target.buildPath);
         const workingDirectory = '${workspaceFolder}';
-        const targetPath = target.buildPath;
-        const programPath = path.join(workingDirectory, targetPath);
+        const programPath = this.getBinaryPath(target);
         const runArgs = target.getRunArgs().toString();
 
         return {
