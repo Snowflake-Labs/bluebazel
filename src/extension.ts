@@ -118,7 +118,7 @@ async function findBazelWorkspace(): Promise<string | null> {
     const fs = require('fs');
     const path = require('path');
 
-    const bazelFiles = ['WORKSPACE', 'WORKSPACE.bazel', 'MODULE', 'MODULE.bazel'];
+    const bazelFiles = ['WORKSPACE', 'WORKSPACE.bazel'];
     let currentDir = workspaceFolder.uri.fsPath;
 
     // Walk up the directory tree looking for Bazel workspace files

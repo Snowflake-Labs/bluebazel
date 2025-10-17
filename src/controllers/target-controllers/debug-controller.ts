@@ -273,5 +273,4 @@ export class DebugController implements BazelTargetController {
             }
         }, 2000);
     }
-
 }
