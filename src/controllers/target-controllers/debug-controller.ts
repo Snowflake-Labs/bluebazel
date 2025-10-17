@@ -156,6 +156,11 @@ export class DebugController implements BazelTargetController {
     }
 
     private async debugInBazel(target: BazelTarget) {
+        // Build target first with debug symbols
+        if (this.configurationManager.shouldBuildBeforeLaunch()) {
+            await this.buildController.execute(target);
+        }
+
         // Start a debug server
         return showProgress(`Debugging ${target.action} ${target.bazelPath}`, async (cancellationToken) => {
             Console.info('Start debugging...');
@@ -210,7 +215,9 @@ export class DebugController implements BazelTargetController {
             const disp = vscode.debug.onDidTerminateDebugSession((session) => {
                 if (session.id === debugSessionId) {
                     disp.dispose(); // Clean up the event listener
-                    serverExec?.terminate();
+                    if (serverExec) {
+                        this.forceKillServer(serverExec, port);
+                    }
                 }
             });
         });
@@ -239,4 +246,31 @@ export class DebugController implements BazelTargetController {
         return LanguageRegistry.getPlugin(target.language).getDebugRunUnderCommand(port);
     }
 
+    private async forceKillServer(serverExec: vscode.TaskExecution, port: number): Promise<void> {
+        // Step 1: Gentle termination
+        serverExec.terminate();
+
+        // Step 2: Wait 2 seconds, then force-kill via port-based process killing
+        setTimeout(async () => {
+            try {
+                // Use shell service to force-kill processes on the debug port
+                const { exec } = require('child_process');
+                await new Promise<void>((resolve, reject) => {
+                    exec(
+                        `pkill -9 -f "(gdb|lldb)-server.*:${port}"`,
+                        (error: any, stdout: any, stderr: any) => {
+                            if (error && error.code !== 1) { // code 1 means no processes found, which is OK
+                                Console.warn(`Failed to force-kill debug server on port ${port}: ${error.message}`);
+                            } else {
+                                Console.info(`Force-killed debug server on port ${port}`);
+                            }
+                            resolve();
+                        }
+                    );
+                });
+            } catch (error) {
+                Console.warn(`Failed to force-kill debug server on port ${port}: ${error}`);
+            }
+        }, 2000);
+    }
 }

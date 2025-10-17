@@ -25,6 +25,7 @@ import { BazelTarget } from '../../models/bazel-target';
 import { BazelService } from '../../services/bazel-service';
 import { ConfigurationManager } from '../../services/configuration-manager';
 import { EnvVarsUtils } from '../../services/env-vars-utils';
+import { WorkspaceService } from '../../services/workspace-service';
 import { LanguagePlugin } from '../language-plugin';
 import * as path from 'path';
 import * as vscode from 'vscode';
@@ -41,8 +42,58 @@ export class CppLanguagePlugin implements LanguagePlugin {
         this.supportedLanguages = ['cpp', 'c'];
     }
 
+    private getBinaryPath(target: BazelTarget): string {
+        // Use Bazel workspace root for binary path, since that's where bazel-bin is located
+        const bazelWorkspaceFolder = WorkspaceService.getInstance().getBazelWorkspaceFolder();
+        return path.join(bazelWorkspaceFolder.uri.fsPath, target.buildPath);
+    }
+
     public getDebugRunUnderCommand(port: number): string {
-        return `gdbserver :${port}`;
+        const debuggerType = this.configurationManager.getDebuggerType();
+
+        if (debuggerType === 'lldb') {
+            // Find CodeLLDB extension directory dynamically
+            const codelldbPath = this.getCodeLLDBPath();
+            if (codelldbPath) {
+                return `${codelldbPath}/lldb/bin/lldb-server gdbserver :${port}`;
+            } else {
+                // Fallback to system lldb-server if CodeLLDB not found
+                return `lldb-server gdbserver :${port}`;
+            }
+        } else {
+            return `gdbserver :${port}`;
+        }
+    }
+
+    private getCodeLLDBPath(): string | null {
+        try {
+            const fs = require('fs');
+            const path = require('path');
+            const os = require('os');
+
+            const extensionsDir = path.join(os.homedir(), '.vscode-server', 'extensions');
+
+            if (!fs.existsSync(extensionsDir)) {
+                return null;
+            }
+
+            const extensions = fs.readdirSync(extensionsDir);
+            const codelldbDir = extensions.find((dir: string) => dir.startsWith('vadimcn.vscode-lldb-'));
+
+            if (codelldbDir) {
+                const fullPath = path.join(extensionsDir, codelldbDir);
+                const lldbServerPath = path.join(fullPath, 'lldb', 'bin', 'lldb-server');
+
+                // Verify the lldb-server binary exists
+                if (fs.existsSync(lldbServerPath)) {
+                    return fullPath;
+                }
+            }
+
+            return null;
+        } catch (error) {
+            return null;
+        }
     }
 
     public getDebugEnvVars(_target: BazelTarget): string[] {
@@ -51,6 +102,16 @@ export class CppLanguagePlugin implements LanguagePlugin {
 
     public async createDebugRunUnderLaunchConfig(target: BazelTarget,
         _cancellationToken?: vscode.CancellationToken): Promise<vscode.DebugConfiguration> {
+        const debuggerType = this.configurationManager.getDebuggerType();
+
+        if (debuggerType === 'lldb') {
+            return this.createLldbRunUnderLaunchConfig(target);
+        } else {
+            return this.createCppdbgRunUnderLaunchConfig(target);
+        }
+    }
+
+    private async createCppdbgRunUnderLaunchConfig(target: BazelTarget): Promise<vscode.DebugConfiguration> {
         const bazelTarget = BazelService.formatBazelTargetFromPath(target.buildPath);
         const bazelArgs = target.getBazelArgs().toString();
         const configArgs = target.getConfigArgs().toString();
@@ -97,10 +158,42 @@ export class CppLanguagePlugin implements LanguagePlugin {
         return config;
     }
 
-    public async createDebugDirectLaunchConfig(target: BazelTarget, _cancellationToken?: vscode.CancellationToken): Promise<vscode.DebugConfiguration> {
+    private async createLldbRunUnderLaunchConfig(target: BazelTarget): Promise<vscode.DebugConfiguration> {
+        const bazelTarget = BazelService.formatBazelTargetFromPath(target.buildPath);
+        const bazelArgs = target.getBazelArgs().toString();
+        const configArgs = target.getConfigArgs().toString();
         const workingDirectory = '${workspaceFolder}';
-        const targetPath = target.buildPath;//await this.bazelService.getBazelTargetBuildPath(target, cancellationToken);
-        const programPath = path.join(workingDirectory, targetPath);
+        const runArgs = target.getRunArgs().toString();
+
+        return {
+            name: `${bazelTarget} (LLDB Run Under)`,
+            type: 'lldb',
+            request: 'launch',
+            program: '/bin/bash',
+            args: ['-c', `./.vscode/bazel_debug.sh ${target.action} --run_under="${this.getDebugRunUnderCommand(0).replace(':0', '')}" ${bazelArgs} ${configArgs} ${bazelTarget} ${runArgs}`],
+            cwd: workingDirectory,
+            sourceMap: {
+                '/proc/self/cwd': workingDirectory,
+                '.': workingDirectory
+            },
+            env: EnvVarsUtils.listToObject([...this.setupEnvVars, ...target.getEnvVars().toStringArray()]),
+            console: 'integratedTerminal'
+        };
+    }
+
+    public async createDebugDirectLaunchConfig(target: BazelTarget, _cancellationToken?: vscode.CancellationToken): Promise<vscode.DebugConfiguration> {
+        const debuggerType = this.configurationManager.getDebuggerType();
+
+        if (debuggerType === 'lldb') {
+            return this.createLldbDirectLaunchConfig(target);
+        } else {
+            return this.createCppdbgDirectLaunchConfig(target);
+        }
+    }
+
+    private async createCppdbgDirectLaunchConfig(target: BazelTarget): Promise<vscode.DebugConfiguration> {
+        const workingDirectory = '${workspaceFolder}';
+        const programPath = this.getBinaryPath(target);
 
         /* The environment key for type 'cppdbg' is different than
          * other launch configs because it expects an array of
@@ -137,10 +230,19 @@ export class CppLanguagePlugin implements LanguagePlugin {
     public async createDebugAttachConfig(target: BazelTarget,
         port: number,
         _cancellationToken?: vscode.CancellationToken): Promise<vscode.DebugConfiguration> {
+        const debuggerType = this.configurationManager.getDebuggerType();
+
+        if (debuggerType === 'lldb') {
+            return this.createLldbAttachConfig(target, port);
+        } else {
+            return this.createCppdbgAttachConfig(target, port);
+        }
+    }
+
+    private async createCppdbgAttachConfig(target: BazelTarget, port: number): Promise<vscode.DebugConfiguration> {
         const bazelTarget = BazelService.formatBazelTargetFromPath(target.buildPath);
         const workingDirectory = '${workspaceFolder}';
-        const targetPath = target.buildPath;
-        const programPath = path.join(workingDirectory, targetPath);
+        const programPath = this.getBinaryPath(target);
 
         const envVars = EnvVarsUtils.listToArrayOfObjects(target.getEnvVars().toStringArray());
 
@@ -216,6 +318,48 @@ export class CppLanguagePlugin implements LanguagePlugin {
             useExtendedRemote: true,
         };
         return config;
+    }
+
+    private async createLldbAttachConfig(target: BazelTarget, port: number): Promise<vscode.DebugConfiguration> {
+        const bazelTarget = BazelService.formatBazelTargetFromPath(target.buildPath);
+        const workingDirectory = '${workspaceFolder}';
+        const programPath = this.getBinaryPath(target);
+        const runArgs = target.getRunArgs().toString();
+
+        return {
+            name: `${bazelTarget} (LLDB Attach)`,
+            type: 'lldb',
+            request: 'launch',
+            program: programPath,
+            args: runArgs.length > 0 ? runArgs.split(' ') : [],
+            cwd: workingDirectory,
+            sourceMap: {
+                '.': workingDirectory
+            },
+            initCommands: [
+                `gdb-remote 127.0.0.1:${port}`
+            ]
+        };
+    }
+
+    private async createLldbDirectLaunchConfig(target: BazelTarget): Promise<vscode.DebugConfiguration> {
+        const workingDirectory = '${workspaceFolder}';
+        const targetPath = target.buildPath;
+        const programPath = path.join(workingDirectory, targetPath);
+        const runArgs = target.getRunArgs().toString();
+
+        return {
+            name: `debug ${path.basename(targetPath)}`,
+            type: 'lldb',
+            request: 'launch',
+            program: programPath,
+            args: runArgs.length > 0 ? runArgs.split(' ') : [],
+            cwd: `${workingDirectory}/${path.dirname(targetPath)}.runfiles/__main__`,
+            sourceMap: {
+                '.': workingDirectory
+            },
+            env: EnvVarsUtils.listToObject([...this.setupEnvVars, ...target.getEnvVars().toStringArray()])
+        };
     }
 
     /**

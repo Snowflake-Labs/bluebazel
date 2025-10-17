@@ -293,4 +293,13 @@ export class ConfigurationManager {
         return res;
     }
 
+    public getDebuggerType(): string {
+        const config = this.getConfig();
+        const res = config.get<string>('debug.debuggerType');
+        if (res === undefined || res === '') {
+            return 'cppdbg';
+        }
+        return res;
+    }
+
 }

@@ -33,6 +33,9 @@ export class WorkspaceService {
     // Cached workspace folder
     private workspaceFolder: vscode.WorkspaceFolder;
 
+    // Detected Bazel workspace root path (may differ from VS Code workspace)
+    private bazelWorkspaceRoot: string | null = null;
+
     // Private constructor to prevent direct instantiation
     private constructor() {
         this.workspaceFolder = this.initializeWorkspaceFolder();
@@ -61,9 +64,26 @@ export class WorkspaceService {
         }
     }
 
-    // Public method to get the cached workspace folder
+    // Public method to get the cached workspace folder (VS Code workspace)
     public getWorkspaceFolder(): vscode.WorkspaceFolder {
         return this.workspaceFolder;
+    }
+
+    // Method to get the Bazel workspace root folder (for Bazel operations)
+    public getBazelWorkspaceFolder(): vscode.WorkspaceFolder {
+        if (this.bazelWorkspaceRoot) {
+            return {
+                uri: vscode.Uri.file(this.bazelWorkspaceRoot),
+                index: this.workspaceFolder.index,
+                name: this.workspaceFolder.name + ' (Bazel Root)'
+            };
+        }
+        return this.workspaceFolder;
+    }
+
+    // Method to set the detected Bazel workspace root path
+    public setBazelWorkspaceRoot(rootPath: string): void {
+        this.bazelWorkspaceRoot = rootPath;
     }
 
     public async getSubdirectoryPaths(root = '') {

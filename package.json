@@ -2,7 +2,7 @@
     "name": "bluebazel",
     "displayName": "Blue Bazel",
     "description": "Bazel vscode UI integration to build, debug, and test targets",
-    "version": "1.0.6",
+    "version": "1.0.8",
     "engines": {
         "vscode": "^1.85.2"
     },
@@ -17,7 +17,8 @@
         "workspaceContains:WORKSPACE",
         "workspaceContains:WORKSPACE.bazel",
         "workspaceContains:MODULE",
-        "workspaceContains:MODULE.bazel"
+        "workspaceContains:MODULE.bazel",
+        "onStartupFinished"
     ],
     "main": "./out/main.js",
     "contributes": {
@@ -471,7 +472,7 @@
                 },
                 "bluebazel.debug.bazelArgs": {
                     "type": "array",
-                    "default": [],
+                    "default": ["--compilation_mode=dbg", "--spawn_strategy=local"],
                     "description": "Additional Bazel arguments that will be added to all debug commands.",
                     "items": {
                         "type": "string",
@@ -482,6 +483,12 @@
                     "type": "string",
                     "default": "/usr/bin/gdb",
                     "description": "Path to the GDB debugger executable."
+                },
+                "bluebazel.debug.debuggerType": {
+                    "type": "string",
+                    "enum": ["cppdbg", "lldb"],
+                    "default": "cppdbg",
+                    "description": "Choose which debugger to use for C++ debugging. 'cppdbg' uses Microsoft C++ extension, 'lldb' uses CodeLLDB extension."
                 }
             }
         }
@@ -531,8 +538,8 @@
         "tmp": "^0.2.1",
         "uuid": "^10.0.0"
     },
-    "publisher": "NVIDIA",
+    "publisher": "snowflake",
     "repository": {
-        "url": "https://github.com/NVIDIA/bluebazel"
+        "url": "https://github.com/Snowflake-Labs/bluebazel"
     }
 }
