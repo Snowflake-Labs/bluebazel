@@ -69,24 +69,17 @@ export class CppLanguagePlugin implements LanguagePlugin {
         try {
             const fs = require('fs');
             const path = require('path');
-            const os = require('os');
 
-            const extensionsDir = path.join(os.homedir(), '.vscode-server', 'extensions');
-
-            if (!fs.existsSync(extensionsDir)) {
-                return null;
-            }
-
-            const extensions = fs.readdirSync(extensionsDir);
-            const codelldbDir = extensions.find((dir: string) => dir.startsWith('vadimcn.vscode-lldb-'));
-
-            if (codelldbDir) {
-                const fullPath = path.join(extensionsDir, codelldbDir);
-                const lldbServerPath = path.join(fullPath, 'lldb', 'bin', 'lldb-server');
+            // Use VS Code API to find the CodeLLDB extension
+            const codelldbExtension = vscode.extensions.getExtension('vadimcn.vscode-lldb');
+            
+            if (codelldbExtension) {
+                const extensionPath = codelldbExtension.extensionPath;
+                const lldbServerPath = path.join(extensionPath, 'lldb', 'bin', 'lldb-server');
 
                 // Verify the lldb-server binary exists
                 if (fs.existsSync(lldbServerPath)) {
-                    return fullPath;
+                    return extensionPath;
                 }
             }
 

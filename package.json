@@ -472,7 +472,10 @@
                 },
                 "bluebazel.debug.bazelArgs": {
                     "type": "array",
-                    "default": ["--compilation_mode=dbg", "--spawn_strategy=local"],
+                    "default": [
+                        "--compilation_mode=dbg",
+                        "--spawn_strategy=local"
+                    ],
                     "description": "Additional Bazel arguments that will be added to all debug commands.",
                     "items": {
                         "type": "string",
@@ -486,7 +489,10 @@
                 },
                 "bluebazel.debug.debuggerType": {
                     "type": "string",
-                    "enum": ["cppdbg", "lldb"],
+                    "enum": [
+                        "cppdbg",
+                        "lldb"
+                    ],
                     "default": "cppdbg",
                     "description": "Choose which debugger to use for C++ debugging. 'cppdbg' uses Microsoft C++ extension, 'lldb' uses CodeLLDB extension."
                 }
@@ -530,6 +536,7 @@
     },
     "dependencies": {
         "@types/tmp": "^0.2.0",
+        "@vscode/vsce": "^3.6.2",
         "atob": "^2.1.2",
         "executable": "^4.1.1",
         "fast-glob": "^3.2.4",
